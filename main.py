@@ -20,7 +20,7 @@ with col1:
 # 3. 두 번째 열(col2)에 버튼 배치
 with col2:
     # 버튼이 입력창과 수직으로 잘 정렬되도록 st.button()만 사용합니다.
-    button_clicked = st.button("✨ 출력")
+    button_clicked = st.button("✨출력✨")
 
 # ---
 
