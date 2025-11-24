@@ -9,7 +9,7 @@ user_name = st.text_input("사용자의 이름을 입력해주세요:", placehol
 
 # 2. 버튼 생성 및 클릭 여부 확인
 # st.button("버튼 텍스트")는 버튼이 클릭되었을 때 True를 반환합니다.
-if st.button("✨ 환영 메시지 출력"):
+if st.button("✨입력✨"):
     # 3. 버튼이 클릭되었을 때만 실행되는 로직
     if user_name:
         # 이름이 입력된 경우 메시지 출력
