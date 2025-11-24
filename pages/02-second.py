@@ -1,81 +1,160 @@
 import streamlit as st
 import datetime
 
-# 1. 페이지 설정 (반드시 첫 번째 Streamlit 명령이어야 합니다)
-st.set_page_config(page_title="미림마이스터고 급식 메뉴", layout="centered")
+# 1. 시맨틱 UI 느낌을 위한 사용자 정의 CSS (이전 MBTI 앱과 동일)
+def set_semantic_style():
+    """시맨틱 UI 스타일링을 모방한 CSS 주입"""
+    st.markdown("""
+        <style>
+            /* 전체 페이지 배경 및 기본 글꼴 설정 */
+            .main {
+                background-color: #f7f7f7; 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            }
+            /* 헤더 스타일링 */
+            .stApp header {
+                background-color: #1b1c1d; 
+                color: white;
+                padding: 1rem;
+                margin-bottom: 2rem;
+            }
+            /* 컨테이너 (카드) 스타일링 */
+            .stContainer {
+                background-color: white;
+                border-radius: 0.28571429rem; 
+                box-shadow: 0 1px 2px 0 rgba(34,36,38,.15); 
+                border: 1px solid rgba(34,36,38,.15);
+                padding: 1.5rem;
+                margin-bottom: 1.5rem;
+            }
+            /* 멘트 및 안내 섹션 */
+            h3 {
+                color: #007bb6; 
+            }
+            .stInfo { /* st.info 박스 스타일 */
+                border-left: 5px solid #2185d0;
+                background-color: #f0f8ff;
+                padding: 10px;
+                border-radius: 4px;
+            }
+            .meal-box {
+                border: 1px solid #ddd;
+                padding: 15px;
+                margin-bottom: 10px;
+                border-radius: 5px;
+                background-color: #fff;
+            }
+            .meal-box h4 {
+                color: #007bb6;
+                margin-top: 0;
+            }
+        </style>
+        """, unsafe_allow_html=True)
 
-# 2. 급식 메뉴 검색 함수 (실제 검색 도구 호출 및 결과 파싱을 가정)
-def search_school_meal(date_obj: datetime.date) -> dict:
+# 2. 메뉴 데이터 조회 함수 (실제 검색 불가로 안내 기능만 구현)
+def get_meal_info(date: datetime.date):
     """
-    미림마이스터고의 특정 날짜 급식 메뉴를 검색합니다.
-    (실제로는 외부 검색 도구의 결과를 파싱해야 하지만, 여기서는 검색 쿼리를 생성하고 가상의 데이터를 반환합니다.)
+    미림마이스터고 급식 메뉴 정보를 검색하는 안내 함수.
+    실제 메뉴를 가져오지 않고, 사용자에게 안내 메시지와 검색 쿼리를 제공합니다.
     """
+    date_str = date.strftime("%Y-%m-%d")
+    day_name = date.strftime("%A")
+    korean_day = {"Monday": "월요일", "Tuesday": "화요일", "Wednesday": "수요일", 
+                  "Thursday": "목요일", "Friday": "금요일", "Saturday": "토요일", "Sunday": "일요일"}
     
-    # 쿼리 생성: 검색 정확도를 높이기 위해 학교명, 날짜, 급식 키워드를 조합합니다.
-    day_of_week_kr = ["월", "화", "수", "목", "금", "토", "일"][date_obj.weekday()]
-    query = f"미림마이스터고 급식 {date_obj.month}/{date_obj.day} ({day_of_week_kr})"
+    # 검색 쿼리 예시
+    search_query = f"미림마이스터고 급식 {date.month}/{date.day}({korean_day[day_name][:1]})"
     
-    # --- 실제 검색 실행 및 결과 파싱 ---
-    # 이 부분은 현재 실행 환경의 Google Search Tool을 호출한다고 가정합니다.
-    # 호출 후, 반환된 텍스트 결과를 조식, 중식, 석식으로 파싱하는 로직이 필요합니다.
+    # 템플릿 데이터 (실제 데이터 아님)
+    template_data = {
+        "date_info": f"{date_str} ({korean_day[day_name]})",
+        "search_query": search_query
+    }
     
-    
-    # 2025년 11월 24일 (월) 메뉴 (검색 결과를 기반으로 한 가상 데이터)
-    if date_obj.strftime("%Y-%m-%d") == "2025-11-24":
-        return {
-            "date": "2025년 11월 24일 (월)",
-            "조식": "시리얼&우유, 에그타르트, 콘치즈토스트, 볶음김치",
-            "중식": "흑미밥, 맑은콩나물국, 돈육불고기, 모듬쌈/쌈장, 도토리묵채소무침, 배추김치, 사과",
-            "석식": "잔치국수, 김가루밥, 수제치즈볼, 야채튀김, 단무지무침, 배추김치, 포도주스"
-        }
-    
-    # 주말이거나 (토/일) 검색된 메뉴가 없는 경우
-    if date_obj.weekday() >= 5:
-        return {"date": f"{date_obj.strftime('%Y년 %m월 %d일')} ({day_of_week_kr})", "message": "주말은 급식이 제공되지 않습니다."}
-    else:
-        return {"date": f"{date_obj.strftime('%Y년 %m월 %d일')} ({day_of_week_kr})", "message": f"검색 결과 해당 날짜의 급식 메뉴 정보를 찾을 수 없습니다. (검색 쿼리: '{query}')"}
+    return template_data
 
-# 3. 앱 메인 로직
+# 3. Streamlit 앱 메인 함수
 def main():
-    st.title("🏫 미림마이스터고등학교 오늘의 급식 메뉴")
+    
+    # 시맨틱 UI 스타일 적용
+    set_semantic_style()
+    
+    st.title("🍜 미림마이스터고 급식 메뉴 조회")
+    
+    # 날짜 입력 위젯
+    # 기본값은 오늘 날짜
+    today = datetime.date(2025, 11, 24) # 요청 날짜인 2025-11-24로 고정
+    selected_date = st.date_input(
+        "**🗓️ 조회할 날짜를 선택하세요:**",
+        value=today,
+        min_value=datetime.date(2025, 1, 1),
+        max_value=datetime.date(2026, 12, 31)
+    )
+
+    st.markdown("---")
+    st.markdown("<div class='stContainer'>", unsafe_allow_html=True) 
+
+    # 메뉴 정보 가져오기
+    meal_data = get_meal_info(selected_date)
+    
+    st.header(f"📅 {meal_data['date_info']} 메뉴 검색 결과")
+
+    if selected_date.weekday() >= 5: # 토요일(5) 또는 일요일(6)
+        st.warning(f"⚠️ {meal_data['date_info']}는 주말이므로 급식이 제공되지 않을 수 있습니다.")
+    
+    
+    # 4. 검색 안내 및 결과 출력 영역
+    st.markdown("### 🔍 메뉴 조회 안내")
+    
+    st.info(f"""
+        **미림마이스터고등학교의 급식 메뉴는 실시간 API가 없어 자동으로 표시할 수 없습니다.**
+
+        하지만 아래 검색어를 복사하여 **Google** 또는 **학교 홈페이지**에서 검색하시면 **가장 정확한 메뉴 정보**를 찾으실 수 있습니다.
+    """)
+    
+    # 검색어 표시
+    st.code(meal_data['search_query'], language='text')
+
     st.markdown("---")
     
-    # 오늘 날짜 설정 (현재는 2025-11-24)
-    today = datetime.date(2025, 11, 24)
-    st.header(f"📅 조회 날짜: {today.strftime('%Y년 %m월 %d일')}")
-
-    # 날짜 입력 위젯 (사용자가 다른 날짜를 선택할 수 있도록)
-    selected_date = st.date_input("다른 날짜를 선택해보세요:", today)
-
-    # 급식 메뉴 검색 및 표시
-    menu_data = search_school_meal(selected_date)
-
-    st.markdown("---")
+    # 5. 가상의 급식 메뉴 박스 (UI 예시)
+    st.markdown("### 🍱 급식 메뉴 (UI 예시)")
     
-    if "message" in menu_data:
-        # 메뉴를 찾지 못했거나 주말인 경우 메시지 표시
-        st.warning(f"**{menu_data['date']}** 메뉴: {menu_data['message']}")
-        
-    else:
-        st.subheader(f"✅ {menu_data['date']} 급식 메뉴")
-        
-        # 메뉴를 표(Table)로 깔끔하게 정리하여 보여줍니다.
-        menu_items = {
-            "구분": ["조식 ☀️", "중식 🍚", "석식 🌙"],
-            "메뉴": [menu_data.get("조식", "-"), menu_data.get("중식", "-"), menu_data.get("석식", "-")]
-        }
-        menu_df = pd.DataFrame(menu_items)
-        
-        # Streamlit의 데이터 프레임 기능으로 표를 표시
-        st.table(menu_df)
-        
-        st.caption("메뉴 정보는 학교 홈페이지의 공지사항을 기반으로 합니다.")
+    col_break, col_lunch, col_dinner = st.columns(3)
 
-# 필요한 라이브러리인 Pandas가 없으므로 설치해야 합니다.
-# 이 코드 실행을 위해 pandas 라이브러리가 필요함을 명시합니다.
-try:
-    import pandas as pd
-    if __name__ == "__main__":
-        main()
-except ImportError:
-    st.error("🚨 이 앱을 실행하려면 `pandas` 라이브러리가 필요합니다. `pip install pandas`를 실행해주세요.")
+    with col_break:
+        st.markdown("<div class='meal-box'>", unsafe_allow_html=True)
+        st.markdown("#### 조식 (Breakfast)")
+        st.markdown("* 흰밥/죽")
+        st.markdown("* 씨리얼 & 우유")
+        st.markdown("* 햄치즈 샌드위치")
+        st.markdown("* 배추김치")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with col_lunch:
+        st.markdown("<div class='meal-box'>", unsafe_allow_html=True)
+        st.markdown("#### 중식 (Lunch)")
+        st.markdown("* **차조밥**")
+        st.markdown("* 시원한 콩나물국")
+        st.markdown("* **닭갈비 덮밥**")
+        st.markdown("* 오징어초무침")
+        st.markdown("* 포기김치, 오렌지주스")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    with col_dinner:
+        st.markdown("<div class='meal-box'>", unsafe_allow_html=True)
+        st.markdown("#### 석식 (Dinner)")
+        st.markdown("* 잡곡밥")
+        st.markdown("* 순두부찌개")
+        st.markdown("* **돈육 고추장 불고기**")
+        st.markdown("* 계란찜")
+        st.markdown("* 깍두기, 옥수수 콘샐러드")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+    st.caption("위에 표시된 메뉴는 실제 메뉴가 아닌, UI 구성을 위한 예시 데이터입니다.")
+
+    st.markdown("</div>", unsafe_allow_html=True) # 컨테이너 끝
+
+# 앱 실행
+if __name__ == "__main__":
+    main()
