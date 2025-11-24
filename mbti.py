@@ -2,45 +2,40 @@ import streamlit as st
 import pandas as pd
 import numpy as np
 
-# 1. 시맨틱 UI 느낌을 위한 사용자 정의 CSS (이전과 동일)
+# 1. 페이지 설정: 반드시 스트림릿 앱의 첫 번째 명령이어야 합니다.
+st.set_page_config(page_title="MBTI 성격 유형 분석기", layout="centered")
+
+# 2. 시맨틱 UI 느낌을 위한 사용자 정의 CSS
 def set_semantic_style():
     """시맨틱 UI 스타일링을 모방한 CSS 주입"""
     st.markdown("""
         <style>
             /* 전체 페이지 배경 및 기본 글꼴 설정 */
             .main {
-                background-color: #f7f7f7; /* 약간 회색 배경 */
+                background-color: #f7f7f7; 
                 font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             }
-
-            /* 제목 스타일링 */
             .stApp header {
-                background-color: #1b1c1d; /* Semantic UI Header Color */
+                background-color: #1b1c1d; 
                 color: white;
                 padding: 1rem;
                 margin-bottom: 2rem;
             }
-
-            /* 컨테이너 (카드) 스타일링 */
             .stContainer {
                 background-color: white;
-                border-radius: 0.28571429rem; /* Semantic UI Border Radius */
-                box-shadow: 0 1px 2px 0 rgba(34,36,38,.15); /* Semantic UI Box Shadow */
+                border-radius: 0.28571429rem; 
+                box-shadow: 0 1px 2px 0 rgba(34,36,38,.15); 
                 border: 1px solid rgba(34,36,38,.15);
                 padding: 1.5rem;
                 margin-bottom: 1.5rem;
             }
-
-            /* 선택 정보 강조 (Metric/Statistic 느낌) */
             div[data-testid="stMetricValue"] {
                 font-size: 2.5rem;
                 font-weight: 700;
-                color: #2185d0; /* Semantic UI Primary Blue */
+                color: #2185d0; 
             }
-
-            /* 멘트 및 설명 섹션 */
             h3 {
-                color: #007bb6; /* 조금 더 강조된 색상 */
+                color: #007bb6; 
             }
             blockquote {
                 border-left: 5px solid #2185d0;
@@ -51,7 +46,7 @@ def set_semantic_style():
         </style>
         """, unsafe_allow_html=True)
 
-# 2. MBTI 유형별 간단한 설명 데이터 (이전과 동일)
+# 3. MBTI 유형별 간단한 설명 데이터 (이전과 동일)
 MBTI_DESCRIPTIONS = {
     'ISTJ': "세상의 소금형: 현실적이고 사실적이며 논리적입니다. 책임감이 강합니다.",
     'ISFJ': "용감한 수호자: 조용하고 헌신적이며 책임감이 강합니다. 사려 깊습니다.",
@@ -71,11 +66,9 @@ MBTI_DESCRIPTIONS = {
     'ENTJ': "대담한 통솔자: 대담하고 통솔력이 있습니다. 목표 달성을 위해 계획을 세웁니다."
 }
 
-# 3. 멘트 생성 함수 (이전과 동일)
+# 4. 멘트 생성 함수 (이전과 동일)
 def generate_compliment(mbti, percentage):
-    """
-    MBTI 유형과 통계 비율을 기반으로 격려 및 특징 멘트를 생성하는 함수
-    """
+    """MBTI 유형과 통계 비율을 기반으로 격려 및 특징 멘트를 생성하는 함수"""
     trait = MBTI_DESCRIPTIONS.get(mbti, "").split(':')[0].strip()
     
     if percentage >= 10:
@@ -96,46 +89,56 @@ def generate_compliment(mbti, percentage):
     )
     return compliment
 
-# 4. Streamlit 앱 메인 함수
+
+# 5. 데이터 로드 및 초기화 함수 (캐싱 적용)
+@st.cache_data
+def load_data(file_path):
+    """CSV 파일을 로드하고 필요한 통계 데이터를 계산합니다."""
+    try:
+        # 파일명을 직접 사용합니다.
+        df = pd.read_csv(file_path)
+        
+        # 첫 번째 컬럼(Country)을 인덱스로 설정
+        df.set_index(df.columns[0], inplace=True)
+        
+        # 모든 MBTI 비율을 퍼센트(0-100)로 변환
+        df_percent = df * 100
+        
+        # 전 세계 평균 비율 계산 (통계 멘트용)
+        mbti_stats = df_percent.mean().sort_values(ascending=False)
+        
+        return {
+            'mbti_df': df_percent,
+            'mbti_stats': mbti_stats,
+            'mbti_types': sorted(mbti_stats.index.tolist()),
+            'countries': sorted(df_percent.index.tolist())
+        }
+        
+    except Exception as e:
+        # 파일 로딩 실패 시 에러 메시지 출력
+        st.error(f"🚨 첨부된 파일('countriesMBTI_16types.csv')을 로드하거나 처리하는 데 오류가 발생했습니다: {e}")
+        return None
+
+# 6. Streamlit 앱 메인 함수
 def main():
-    st.set_page_config(page_title="MBTI 성격 유형 분석기", layout="centered")
     
+    # 데이터 로드 (캐시된 데이터 사용)
+    data = load_data("countriesMBTI_16types.csv")
+    
+    if data is None:
+        return # 데이터 로드 실패 시 앱 실행 중단
+
+    # 데이터 언팩
+    mbti_stats = data['mbti_stats']
+    mbti_types = data['mbti_types']
+    mbti_df = data['mbti_df']
+    countries = data['countries']
+
     # 시맨틱 UI 스타일 적용
     set_semantic_style()
     
     st.title("🧩 MBTI 성격 유형 분석기")
     
-    # 데이터 로드 및 통계 계산
-    if 'mbti_df' not in st.session_state:
-        try:
-            file_path = "countriesMBTI_16types.csv"
-            # 파일 경로를 직접 사용합니다.
-            df = pd.read_csv(file_path)
-            
-            # 첫 번째 컬럼(Country)을 인덱스로 설정
-            df.set_index(df.columns[0], inplace=True)
-            
-            # 모든 MBTI 비율을 퍼센트(0-100)로 변환
-            df_percent = df * 100
-            
-            # 전 세계 평균 비율 계산 (통계 멘트용)
-            st.session_state['mbti_stats'] = df_percent.mean().sort_values(ascending=False)
-            # 국가별 데이터 저장
-            st.session_state['mbti_df'] = df_percent
-            # MBTI 유형 리스트
-            st.session_state['mbti_types'] = sorted(st.session_state['mbti_stats'].index.tolist())
-            # 국가 리스트
-            st.session_state['countries'] = sorted(df_percent.index.tolist())
-            
-        except Exception as e:
-            st.error(f"🚨 첨부된 파일('countriesMBTI_16types.csv')을 로드하거나 처리하는 데 오류가 발생했습니다: {e}")
-            return
-            
-    mbti_stats = st.session_state['mbti_stats']
-    mbti_types = st.session_state['mbti_types']
-    mbti_df = st.session_state['mbti_df']
-    countries = st.session_state['countries']
-
     select_options = ['--- MBTI를 선택하세요 ---'] + mbti_types
 
     # MBTI 선택 박스
@@ -146,21 +149,20 @@ def main():
 
     st.markdown("<div class='stContainer'>", unsafe_allow_html=True) # 컨테이너 시작
 
-    # 5. 선택 결과에 따른 화면 출력
+    # 7. 선택 결과에 따른 화면 출력
     if selected_mbti == '--- MBTI를 선택하세요 ---':
-        # 초기 접속 또는 미선택 시 메시지
         st.info("👆 위에 있는 드롭다운 메뉴에서 **당신의 MBTI**를 선택해주세요. 선택하시면 해당하는 MBTI에 대한 상세 정보가 여기에 나타납니다!")
         st.image("https://i.imgur.com/8Qj9n9t.png", caption="당신의 성격 유형을 찾아보세요!", use_column_width=True)
         
     elif selected_mbti in mbti_stats.index:
         
-        # 5-A. 전 세계 평균 및 설명 섹션
+        # 7-A. 전 세계 평균 및 설명 섹션
         percentage = mbti_stats.loc[selected_mbti]
         description = MBTI_DESCRIPTIONS.get(selected_mbti, "설명 정보를 찾을 수 없습니다.")
         
         st.markdown(f"## 🌟 {selected_mbti} 유형 분석 결과")
         
-        # 3-Column Grid Layout (핵심 통계)
+        # 핵심 통계
         col1, col2, col3 = st.columns(3)
         with col1:
             st.metric(label="전 세계 평균 비율", value=f"{percentage:.1f}%")
@@ -188,7 +190,7 @@ def main():
             
         st.markdown("---")
         
-        # 5-B. 국가별 상세 분석 섹션 추가
+        # 7-B. 국가별 상세 분석 섹션
         st.markdown("## 🌎 국가별 상세 분석")
         
         # 국가 선택 드롭다운
