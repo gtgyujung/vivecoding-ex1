@@ -64,3 +64,178 @@ MBTI_DESCRIPTIONS = {
     'ESTP': "모험을 즐기는 사업가: 활동적이고 문제 해결 능력이 뛰어납니다. 즉흥적입니다.",
     'ESFP': "자유로운 영혼의 연예인: 넘치는 에너지를 가진 자유로운 영혼입니다. 사교적입니다.",
     'ENFP': "재기 발랄한 활동가: 상상력이 풍부하고 개방적입니다. 열정적입니다.",
+    'ENTP': "변론가: 똑똑하고 도전적이며 지적인 도전을 즐깁니다. 논쟁을 즐깁니다.",
+    'ESTJ': "사업가: 체계적이고 리더십이 있습니다. 현실적이며 조직적입니다.",
+    'ESFJ': "사교적인 외교관: 친절하고 사교적입니다. 사람들을 돕는 것을 좋아합니다.",
+    'ENFJ': "정의로운 사회운동가: 카리스마 있고 이타적입니다. 사람들의 성장에 기여합니다.",
+    'ENTJ': "대담한 통솔자: 대담하고 통솔력이 있습니다. 목표 달성을 위해 계획을 세웁니다."
+}
+
+# 3. 멘트 생성 함수 (이전과 동일)
+def generate_compliment(mbti, percentage):
+    """
+    MBTI 유형과 통계 비율을 기반으로 격려 및 특징 멘트를 생성하는 함수
+    """
+    trait = MBTI_DESCRIPTIONS.get(mbti, "").split(':')[0].strip()
+    
+    if percentage >= 10:
+        stat_msg = "가장 흔한 유형 중 하나"
+        stat_adj = "많은 사람들과 공감대를 형성하기 쉽습니다"
+    elif percentage >= 5:
+        stat_msg = "비교적 흔한 유형"
+        stat_adj = "주변에서 쉽게 찾아볼 수 있어 적응력이 뛰어납니다"
+    else:
+        stat_msg = "희귀한 편에 속하는 특별한 유형"
+        stat_adj = "당신만의 고유한 관점과 강점을 가졌습니다"
+
+    compliment = (
+        f"**✨ {mbti} 유형이신 당신**은 **{trait}** 분이시군요! "
+        f"전 세계 평균 인구의 약 **{percentage:.1f}%**를 차지하는 **{stat_msg}**입니다. "
+        f"이러한 비율은 당신이 {stat_adj}는 것을 의미합니다. "
+        f"당신의 고유한 강점을 마음껏 펼쳐나가시길 응원합니다! 🚀"
+    )
+    return compliment
+
+# 4. Streamlit 앱 메인 함수
+def main():
+    st.set_page_config(page_title="MBTI 성격 유형 분석기", layout="centered")
+    
+    # 시맨틱 UI 스타일 적용
+    set_semantic_style()
+    
+    st.title("🧩 MBTI 성격 유형 분석기")
+    
+    # 데이터 로드 및 통계 계산
+    if 'mbti_df' not in st.session_state:
+        try:
+            file_path = "countriesMBTI_16types.csv"
+            # 파일 경로를 직접 사용합니다.
+            df = pd.read_csv(file_path)
+            
+            # 첫 번째 컬럼(Country)을 인덱스로 설정
+            df.set_index(df.columns[0], inplace=True)
+            
+            # 모든 MBTI 비율을 퍼센트(0-100)로 변환
+            df_percent = df * 100
+            
+            # 전 세계 평균 비율 계산 (통계 멘트용)
+            st.session_state['mbti_stats'] = df_percent.mean().sort_values(ascending=False)
+            # 국가별 데이터 저장
+            st.session_state['mbti_df'] = df_percent
+            # MBTI 유형 리스트
+            st.session_state['mbti_types'] = sorted(st.session_state['mbti_stats'].index.tolist())
+            # 국가 리스트
+            st.session_state['countries'] = sorted(df_percent.index.tolist())
+            
+        except Exception as e:
+            st.error(f"🚨 첨부된 파일('countriesMBTI_16types.csv')을 로드하거나 처리하는 데 오류가 발생했습니다: {e}")
+            return
+            
+    mbti_stats = st.session_state['mbti_stats']
+    mbti_types = st.session_state['mbti_types']
+    mbti_df = st.session_state['mbti_df']
+    countries = st.session_state['countries']
+
+    select_options = ['--- MBTI를 선택하세요 ---'] + mbti_types
+
+    # MBTI 선택 박스
+    selected_mbti = st.selectbox(
+        "**👇 당신의 MBTI를 선택해주세요:**",
+        select_options
+    )
+
+    st.markdown("<div class='stContainer'>", unsafe_allow_html=True) # 컨테이너 시작
+
+    # 5. 선택 결과에 따른 화면 출력
+    if selected_mbti == '--- MBTI를 선택하세요 ---':
+        # 초기 접속 또는 미선택 시 메시지
+        st.info("👆 위에 있는 드롭다운 메뉴에서 **당신의 MBTI**를 선택해주세요. 선택하시면 해당하는 MBTI에 대한 상세 정보가 여기에 나타납니다!")
+        st.image("https://i.imgur.com/8Qj9n9t.png", caption="당신의 성격 유형을 찾아보세요!", use_column_width=True)
+        
+    elif selected_mbti in mbti_stats.index:
+        
+        # 5-A. 전 세계 평균 및 설명 섹션
+        percentage = mbti_stats.loc[selected_mbti]
+        description = MBTI_DESCRIPTIONS.get(selected_mbti, "설명 정보를 찾을 수 없습니다.")
+        
+        st.markdown(f"## 🌟 {selected_mbti} 유형 분석 결과")
+        
+        # 3-Column Grid Layout (핵심 통계)
+        col1, col2, col3 = st.columns(3)
+        with col1:
+            st.metric(label="전 세계 평균 비율", value=f"{percentage:.1f}%")
+        with col2:
+            max_mbti = mbti_stats.idxmax()
+            st.metric(label=f"가장 흔한 유형 ({max_mbti})", value=f"{mbti_stats.max():.1f}%")
+        with col3:
+            st.metric(label="가장 희귀한 유형", value=f"{mbti_stats.min():.1f}% ({mbti_stats.idxmin()})")
+        
+        st.markdown("---")
+        
+        # 설명 및 멘트
+        st.markdown("### 📝 유형 설명 및 맞춤 멘트")
+        col_desc, col_ment = st.columns([1, 1])
+        
+        with col_desc:
+            st.markdown("#### **유형 설명**")
+            st.write(f"**{selected_mbti}** 유형의 특징은 다음과 같습니다:")
+            st.markdown(f"<blockquote>{description}</blockquote>", unsafe_allow_html=True)
+            
+        with col_ment:
+            st.markdown("#### **맞춤 멘트**")
+            compliment_message = generate_compliment(selected_mbti, percentage)
+            st.markdown(compliment_message)
+            
+        st.markdown("---")
+        
+        # 5-B. 국가별 상세 분석 섹션 추가
+        st.markdown("## 🌎 국가별 상세 분석")
+        
+        # 국가 선택 드롭다운
+        select_country_options = ['--- 국가를 선택해주세요 ---'] + countries
+        selected_country = st.selectbox(
+            f"**{selected_mbti} 유형에 대해 분석할 국가를 선택해주세요:**",
+            select_country_options
+        )
+
+        if selected_country == '--- 국가를 선택해주세요 ---':
+            st.info("나라를 선택하시면 해당 국가의 **MBTI 비율** 및 **통계 시각화**를 볼 수 있습니다.")
+        else:
+            # 선택된 국가의 해당 MBTI 비율
+            country_percentage = mbti_df.loc[selected_country, selected_mbti]
+            
+            col_stat, col_vis = st.columns([1, 2])
+            
+            with col_stat:
+                st.markdown(f"#### **{selected_country}의 {selected_mbti} 비율**")
+                
+                # 전 세계 평균 대비 비율 차이 계산
+                difference = country_percentage - percentage
+                
+                st.metric(
+                    label=f"{selected_country} 비율", 
+                    value=f"{country_percentage:.1f}%", 
+                    delta=f"{difference:.1f}% (전 세계 평균 대비)",
+                    delta_color="normal"
+                )
+                
+                # 해당 국가에서 가장 흔한 MBTI
+                country_max_mbti = mbti_df.loc[selected_country].idxmax()
+                country_max_percent = mbti_df.loc[selected_country].max()
+                st.markdown(f"**💡 해당 국가에서 가장 흔한 유형:**")
+                st.markdown(f"*{country_max_mbti}* ({country_max_percent:.1f}%)")
+                
+            with col_vis:
+                st.markdown(f"#### **{selected_country}의 MBTI 유형 분포**")
+                
+                # 선택된 국가의 모든 MBTI 비율 시각화
+                country_data = mbti_df.loc[selected_country].rename("비율 (%)").to_frame()
+                st.bar_chart(country_data, use_container_width=True, height=250)
+
+
+    st.markdown("</div>", unsafe_allow_html=True) # 컨테이너 끝
+
+
+# 앱 실행
+if __name__ == "__main__":
+    main()
