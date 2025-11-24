@@ -65,4 +65,92 @@ def main():
             df = pd.read_csv(file_path)
 
             # 첫 번째 컬럼(Country)을 인덱스로 설정
-            df.set_index(df.columns
+            df.set_index(df.columns[0], inplace=True)
+            
+            # 모든 MBTI 비율을 100% 기준으로 변환 (파일 내용이 비율로 되어 있다고 가정)
+            # 파일 데이터는 비율(0~1)로 되어 있으므로 100을 곱하여 퍼센트로 변환
+            df_percent = df * 100
+
+            # 모든 국가의 평균 비율 계산 (전 세계 통계로 활용)
+            st.session_state['mbti_stats'] = df_percent.mean().sort_values(ascending=False)
+            st.session_state['mbti_df'] = df_percent
+
+            # MBTI 유형 리스트
+            st.session_state['mbti_types'] = sorted(st.session_state['mbti_stats'].index.tolist())
+
+        except Exception as e:
+            st.error(f"🚨 첨부된 파일('countriesMBTI_16types.csv')을 로드하거나 처리하는 데 오류가 발생했습니다: {e}")
+            return
+            
+    # 데이터와 통계 정보 가져오기
+    mbti_stats = st.session_state['mbti_stats']
+    mbti_types = st.session_state['mbti_types']
+
+    # MBTI 유형 리스트 (선택하지 않음을 포함)
+    select_options = ['--- MBTI를 선택하세요 ---'] + mbti_types
+
+    # 사용자에게 MBTI 선택 드롭다운 보여주기
+    selected_mbti = st.selectbox(
+        "**👇 당신의 MBTI를 선택해주세요:**",
+        select_options
+    )
+
+    st.markdown("---")
+
+    # 4. 선택 결과에 따른 화면 출력
+    if selected_mbti == '--- MBTI를 선택하세요 ---':
+        # 초기 접속 또는 미선택 시 메시지
+        st.info("👆 위에 있는 드롭다운 메뉴에서 **당신의 MBTI**를 선택해주세요. 선택하시면 해당하는 MBTI에 대한 상세 정보가 여기에 나타납니다!")
+        st.image("https://i.imgur.com/8Qj9n9t.png", caption="당신의 성격 유형을 찾아보세요!", use_column_width=True)
+        
+    elif selected_mbti in mbti_stats.index:
+        # 데이터가 있는 경우
+        
+        # 데이터 추출
+        percentage = mbti_stats.loc[selected_mbti]
+        description = MBTI_DESCRIPTIONS.get(selected_mbti, "설명 정보를 찾을 수 없습니다.")
+        
+        st.header(f"🌟 {selected_mbti} 유형 분석 결과")
+        
+        # 4-1. MBTI 설명 출력
+        st.subheader("📝 유형 설명 (Description)")
+        st.write(f"**{selected_mbti}** 유형의 특징은 다음과 같습니다:")
+        st.markdown(f"> **{description}**")
+        
+        st.markdown("---")
+        
+        # 4-2. 통계 정보 출력 및 멘트 생성
+        st.subheader("📊 전 세계 평균 비율 및 맞춤 멘트")
+        
+        # 멘트 생성
+        compliment_message = generate_compliment(selected_mbti, percentage)
+        st.markdown(f"### {compliment_message}")
+        
+        st.markdown("---")
+        
+        # 4-3. 통계 시각화
+        st.subheader("📈 MBTI 유형 비율 분포")
+        
+        # 선택된 MBTI를 강조하는 데이터프레임 준비
+        plot_data = mbti_stats.rename("비율 (%)").to_frame()
+        
+        # 선택된 유형을 강조하는 메트릭스
+        col1, col2 = st.columns(2)
+        with col1:
+            st.metric(label=f"**{selected_mbti} 유형 비율**", value=f"{percentage:.1f}%", delta=None)
+        with col2:
+             st.metric(label="가장 높은 비율 유형", value=f"{mbti_stats.max():.1f}% ({mbti_stats.idxmax()})", delta_color="off")
+        
+        # 모든 MBTI 비율을 시각화하는 막대 그래프
+        st.bar_chart(
+            plot_data,
+            use_container_width=True,
+            height=300
+        )
+        
+        st.caption("위 그래프는 첨부 파일에 포함된 국가들의 평균 MBTI 비율을 나타냅니다.")
+
+
+# 앱 실행
+if __name__ == "__main__":
+    main()
